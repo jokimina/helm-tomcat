@@ -24,6 +24,4 @@ else
   
   echo "## Patch nginx-ingress-lb port listener config"
   kubectl patch -n kube-system svc nginx-ingress-lb  --patch '{"spec":{"ports":[{"name":"'${JOB_BASE_NAME}'0debug","port": '${DEBUG_PORT}', "protocol":"TCP", "targetPort": '${DEBUG_PORT}'}]}}'
-
-# helm inspect values wesd/tomcat | sed  -e "/appName/c\appName: ${JOB_BASE_NAME}" -e "/imageTag/c\imageTag: ${BUILD_NUMBER}" -e "/debugPort/c\debugPort: $RANDOM_DEBUG_PORT" | helm install --debug --wait -f - -n ${JOB_BASE_NAME} wesd/tomcat
 fi
