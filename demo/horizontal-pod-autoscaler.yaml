@@ -1,0 +1,19 @@
+# https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+# kubectl autoscale nginx-hpa --min=2 --max=5 --cpu-percent=80
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nginx-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1beta2
+    kind: Deployment
+    name: nginx
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 80
