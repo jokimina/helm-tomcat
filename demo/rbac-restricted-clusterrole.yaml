@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cs:restricted
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/attach", "pods/exec", "pods/portforward", "pods/proxy"]
+  verbs: ["get", "list", “watch"]
+- apiGroups: [""]
+  resources: ["configmaps", "endpoints", "persistentvolumeclaims", "replicationcontrollers", "replicationcontrollers/scale", "secrets", "serviceaccounts", "services", "services/proxy"]
+  verbs: ["get", "list", “watch"]
+- apiGroups: [""]
+  resources: ["events", "replicationcontrollers/status", "pods/log", "pods/status", "componentstatuses"]
+  verbs: ["get", "list", “watch"]
+- apiGroups: ["apps"]
+  resources: ["daemonsets", "deployments", "deployments/rollback", "deployments/scale", "replicasets", "replicasets/scale", "statefulsets"]
+  verbs: ["get", "list", “watch"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", “watch"]
+- apiGroups: ["batch"]
+  resources: ["cronjobs", "jobs"]
+  verbs: ["get", "list", “watch"]
+- apiGroups: ["extensions"]
+  resources: ["daemonsets", "deployments", "deployments/rollback", "deployments/scale","ingresses","replicasets", "replicasets/scale", "replicationcontrollers/scale"]
+  verbs: ["get", "list", “watch"]

@@ -1,0 +1,14 @@
+# 指定了clusterIP来标识自己的集群地址, 需要在 service-cluster-ip-range 的CIDR内
+# 会根据 selector 对应生成一个名称为 metadata.name 的endpoint
+kind: Service
+apiVersion: v1
+metadata:
+  name: my-service
+spec:
+  clusterIP: 10.2.0.1
+  selector:
+    app: MyApp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376

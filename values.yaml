@@ -1,0 +1,130 @@
+# -----------------------------------------------
+#- 应用环境
+#- testing/prod
+phase: testing
+
+# -----------------------------------------------
+#- 基础配置
+appName: PLACEHOLDER
+imageTag: latest
+entrypoint: "/run.sh"
+replicaCount: 1
+
+#- java remote debug
+debug: true
+#- port range 30000-32767
+debugPort: 30000
+
+# 是否已经启动
+livenessProbeCmd: ":"
+#- 对应readinessProbe, 是否可以提供服务
+# readinessProbeCmd: "curl http://localhost:app-port"
+
+# -----------------------------------------------
+#- 传入容器内的环境变量
+env:
+  clusterType: kubernetes
+  # ext_java_opts: -Dt=1
+  # jobworker_hostname: xxx
+
+# -----------------------------------------------
+#- 决定部署在什么label的节点上
+# nodeSelector:
+#   mode: test
+
+# -----------------------------------------------
+# 日志收集 每个应用对应独立的logstore和aliyunlogconfigs
+# IncludeLabel: release=$appName
+log:
+  # file/stdout
+  type: file
+  dir: "/sample/tomcat/logs"
+  filePattern: "*"
+  # 保留时间, 天
+  lifeCycle: 3
+
+# -----------------------------------------------
+#- 数据卷
+#- 默认使用nas,通过pv/pvc挂载, pv手动绑定到集群方便复用
+volumes:
+# pvc name
+- name: vpc-testing
+  mountPath: /mnt
+
+# -----------------------------------------------
+#- 资源分配和限制
+#- cpu: 500m == 0.5Core
+#- memory: 统一使用M,G
+resources: 
+  limits:
+   cpu: 1000m
+   memory: 512M
+  #- 初始化请求资源, 影响调度决策
+  requests:
+   memory: 128M
+
+# -----------------------------------------------
+#- 容器启动后和停止前的钩子
+lifecycle:
+  postStartCmd: "echo preStart"
+  preStopCmd: "echo postStop"
+
+# -----------------------------------------------
+#- 四层/七层
+#- https://help.aliyun.com/document_detail/53759.html?spm=a2c4g.11186623.6.626.V78ab0
+service:
+  #- ClusterIP/LoadBalancer/NodePort/ExternalName
+  type: ClusterIP
+  externalPort: 8080
+  internalPort: 8080
+  # -- 只在type: LoadBalancer下生效
+  annotations:
+    #- LoadBalancer模式下的可选参数
+    #- 负载均衡所在的地域
+    # service.beta.kubernetes.io/alicloud-loadbalancer-region: cn-beijing
+    #- http:80/https:443/https:443,http:80
+    # service.beta.kubernetes.io/alicloud-loadbalancer-protocol-port: 
+    #- internet(default)/intranet
+    # service.beta.kubernetes.io/alicloud-loadbalancer-address-type: 
+    #- classic/vpc 
+    # service.beta.kubernetes.io/alicloud-loadbalancer-slb-network-type: classic
+    #- paybytraffic/paybybandwidth
+    # service.beta.kubernetes.io/alicloud-loadbalancer-charge-type: paybybandwidth
+    #- 负载均衡实例的id, 已有 listener 会被覆盖, 删除service时SLB不会被删除。
+    # service.beta.kubernetes.io/alicloud-loadbalancer-id:
+    #- 通过label指定SLB后端挂哪些节点
+    # service.beta.kubernetes.io/alicloud-loadbalancer-backend-label: tier=front
+    #- 带宽
+    # service.beta.kubernetes.io/alicloud-loadbalancer-bandwidth:
+    #- 阿里云证书id, https模式
+    # service.beta.kubernetes.io/alicloud-loadbalancer-cert-id:
+    #- SLB的健康检查保持关闭, 由容器集群维护路由状态.
+    # service.beta.kubernetes.io/alicloud-loadbalancer-health-check-flag: off
+
+# -----------------------------------------------
+#- ingress 七层 授权入站连接到达集群服务的规则集合 在service之前
+#- https://help.aliyun.com/document_detail/71405.html?spm=a2c4g.11186623.6.608.64ZH3c
+ingress:
+  enabled: true
+  #- 会自动生成集群默认域名的简答路由 foo.[cluster-id].[region-id].alicontainer.com
+  simpleRouting: true
+  #- 自定义域名
+  # hosts:
+  #   - example.sample.com
+  # annotations:
+    #- 重定向指定uri路径到/
+    #- https://github.com/kubernetes/ingress-nginx/tree/master/docs/examples/rewrite
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  # tls:
+    # Secrets must be manually created in the namespace.
+    # - secretName: chart-example-tls
+    #   hosts:
+    #     - chart-example.local
+
+
+# hostAliases:
+# - ip: 172.18.9.17
+#   hostnames:
+#   - sample-zookeeper

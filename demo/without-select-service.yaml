@@ -1,0 +1,23 @@
+# 没有selector的service
+# 不会自动生成endpoint, 可以自己绑定一个
+# 注意：Endpoint IP 地址不能是 loopback（127.0.0.0/8）、 link-local（169.254.0.0/16）、或者 link-local 多播（224.0.0.0/24）
+kind: Service
+apiVersion: v1
+metadata:
+  name: my-service
+spec:
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+
+---
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: my-service
+subsets:
+  - addresses:
+      - ip: 1.2.3.4
+    ports:
+      - port: 9376

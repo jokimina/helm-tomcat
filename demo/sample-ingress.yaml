@@ -1,0 +1,15 @@
+# 简单不带域名的ingress
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: simple
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /svc
+        backend:
+          serviceName: http-svc
+          servicePort: 80

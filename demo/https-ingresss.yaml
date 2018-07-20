@@ -1,0 +1,21 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: tls-fanout
+spec:
+  tls:
+  - hosts:
+    - foo.bar.com
+    secretName: foo.bar
+  rules:
+  - host: foo.bar.com
+    http:
+      paths:
+      - path: /foo
+        backend:
+          serviceName: http-svc1
+          servicePort: 80
+      - path: /bar
+        backend:
+          serviceName: http-svc2
+          servicePort: 80

@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  {{- if .Values.service.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.service.annotations }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ template "app.name" . }}
+    chart: {{ .Values.appName }}-{{ .Values.imageTag }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.externalPort }}
+      targetPort: {{ .Values.service.internalPort }}
+      protocol: TCP
+      name: {{ .Values.service.name }}
+  selector:
+    release: {{ .Release.Name }}
+
+{{- if eq .Values.debug true }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}0debug
+  labels:
+    app: {{ template "app.name" . }}
+    chart: {{ .Values.appName }}-{{ .Values.imageTag }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: NodePort
+  ports:
+    - port: {{ default 5000 .Values.debugPort }}
+      targetPort: {{ default 5000 .Values.debugPort }}
+      nodePort: {{ default 5000 .Values.debugPort }}
+      protocol: TCP
+      name: {{ .Values.service.name }}0debug
+  selector:
+    release: {{ .Release.Name }}
+{{- end }}

@@ -1,0 +1,25 @@
+# 基于域名的ingress
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: simple-fanout
+spec:
+  rules:
+  - host: foo.bar.com
+    http:
+      paths:
+      - path: /foo
+        backend:
+          serviceName: http-svc1
+          servicePort: 80
+      - path: /bar
+        backend:
+          serviceName: http-svc2
+          servicePort: 80
+  - host: foo.example.com
+    http:
+      paths:
+      - path: /film
+        backend:
+          serviceName: http-svc3
+          servicePort: 80    

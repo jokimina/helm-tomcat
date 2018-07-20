@@ -1,0 +1,83 @@
+# 通过云服务商的负载均衡暴露服务 
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: nginx
+  name: http-svc
+  namespace: default
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    run: nginx
+  type: LoadBalancer
+
+# 通过注释指定网络类型和SLB
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.kubernetes.io/alicloud-loadbalancer-address-type: intranet
+    service.beta.kubernetes.io/alicloud-loadbalancer-id: your-loadbalancer-id
+    #  LoadBalancer模式下的可选参数
+    #- 负载均衡所在的地域
+    # service.beta.kubernetes.io/alicloud-loadbalancer-region: cn-beijing
+    #- http:80/https:443/https:443,http:80
+    # service.beta.kubernetes.io/alicloud-loadbalancer-protocol-port: 
+    #- internet(default)/intranet
+    # service.beta.kubernetes.io/alicloud-loadbalancer-address-type: 
+    #- classic/vpc 
+    # service.beta.kubernetes.io/alicloud-loadbalancer-slb-network-type: classic
+    #- paybytraffic/paybybandwidth
+    # service.beta.kubernetes.io/alicloud-loadbalancer-charge-type: paybybandwidth
+    #- 负载均衡实例的id, 已有 listener 会被覆盖, 删除service时SLB不会被删除。
+    # service.beta.kubernetes.io/alicloud-loadbalancer-id:
+    #- 通过label指定SLB后端挂哪些节点
+    # service.beta.kubernetes.io/alicloud-loadbalancer-backend-label: tier=front
+    #- 带宽
+    # service.beta.kubernetes.io/alicloud-loadbalancer-bandwidth:
+    #- 阿里云证书id, https模式
+    # service.beta.kubernetes.io/alicloud-loadbalancer-cert-id:
+    #- SLB的健康检查保持关闭, 由容器集群维护路由状态.
+    # service.beta.kubernetes.io/alicloud-loadbalancer-health-check-flag: off
+  labels:
+    run: nginx
+  name: nginx
+  namespace: default
+spec:
+  ports:
+  - name: web
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    run: nginx
+  sessionAffinity: None
+  type: LoadBalancer
+
+# https
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.kubernetes.io/alicloud-loadbalancer-cert-id: your-cert-id
+    service.beta.kubernetes.io/alicloud-loadbalancer-protocol-port: "https:443"
+  labels:
+    run: nginx
+  name: nginx
+  namespace: default
+spec:
+  ports:
+  - name: web
+    port: 443
+    protocol: TCP
+    targetPort: 443
+  selector:
+    run: nginx
+  sessionAffinity: None
+  type: LoadBalancer

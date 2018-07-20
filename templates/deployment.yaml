@@ -1,0 +1,172 @@
+{{- $debugPort := default 5000 .Values.debugPort }}
+{{- $debugArgs := printf "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=%v" $debugPort }}
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "app.fullname" . }}
+  labels:
+    app: {{ template "app.name" . }}
+    software: {{ .Chart.Name }}
+    chart: {{ .Values.appName }}-{{ .Values.imageTag }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    env: {{ default "testing" .Values.phase }}
+    tier: backend
+    imageTag: {{ .Values.imageTag | quote }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    rollingUpdate:
+      maxSurge: {{- if le .Values.replicaCount 1.0 }} 1
+                {{- else }} {{ div .Values.replicaCount 2 }}
+                {{- end }}
+      maxUnavailable: {{- if le .Values.replicaCount 1.0 }} 1
+                      {{- else }} {{ div .Values.replicaCount 2 }}
+                      {{- end }}
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: {{ template "app.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      hostname: {{ .Release.Name }}{{- if eq .Values.phase "testing" }}-testing {{- end }}
+      containers:
+        - name: {{ .Release.Name }}
+        {{- if .Values.entrypoint }}
+          command: [ "/bin/bash", "-c", {{ .Values.entrypoint | quote }}]
+        {{- end}}
+        {{- if .lifecycle }}
+          lifecycle:
+          {{- if .lifecycle.postStartCmd}}
+            postStart:
+              exec:
+                command: ["/bin/bash", "-c", {{ .Values.lifecycle.postStartCmd | quote }}]
+          {{- end }}
+          {{- if .lifecycle.preStopCmd }}
+            preStop:
+              exec:
+                command: ["/bin/bash","-c", {{ .Values.lifecycle.preStopCmd | quote }}]
+          {{- end }}
+        {{- end }}
+          image: {{ default "registry-vpc.cn-beijing.aliyuncs.com" .Values.repoEndpoint }}/
+            {{- if eq .Values.phase "testing" }}sample-middleware
+            {{- else if eq .Values.phase "prod" }}sample-platform
+            {{- end }}/{{ .Values.appName }}:{{ .Values.imageTag }}
+          imagePullPolicy: {{- if eq .Values.phase "testing" }} Always
+                           {{- else if  eq .Values.phase "prod" }} IfNotPresent
+                           {{- end }}
+          {{- if .Values.hostAliases }}          
+          hostAliases:
+{{ toYaml .Values.hostAliases | indent 10 }}
+          {{- end }}
+          securityContext: 
+            capabilities:
+              add: ["NET_ADMIN", "NET_RAW"]
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          env:
+          - name: APOLLO_APP_ID
+            value: {{ default .Values.appName .Values.env.apollo_app_id | quote }}
+          - name: MODE
+            value: {{ default "default" .Values.env.mode | quote }}
+          - name: CHANGE_HOSTNAME
+            value: {{ default "false" .Values.env.change_hostname | quote }}
+          - name: HTTP_PORT
+            value: {{ default .Values.service.internalPort .Values.service.httpPort | quote }}
+          {{- if .Values.service.dubboPort }}
+          - name: DUBBO_PORT
+            value: {{ .Values.service.dubboPort | quote }}
+          {{- end }}
+          - name: CONSOLE_OUTPUT
+            value: {{ default "true" .Values.env.console_output | quote }}
+          - name: PROPERTIES_SOURCE
+            value: {{ default "apollo" .Values.env.properties_source | quote }}
+          - name: APOLLO_ENV  
+            value: {{- if eq .Values.phase "testing" }} dev
+                   {{- else if eq .Values.phase "prod" }} pro
+                   {{- end }}
+          - name: CONFIG_SERVER_BASE_URL
+            value: {{- if eq .Values.phase "testing" }} "apollo.test.sample.com:8080"
+                   {{- else if eq .Values.phase "prod" }} "apollo.pro.sample.com:8080"
+                   {{- end }}
+          - name: APOLLO_CLUSTER
+            value: {{ default "default" .Values.env.apollo_cluster | quote }}
+          - name: KMS_REGION_ID
+            valueFrom: 
+              secretKeyRef:
+                name: {{ default "kms-config" .Values.kms_secret_config | quote }}
+                key: KMS_REGION_ID
+          - name: KMS_ACCESS_KEY_ID
+            valueFrom: 
+              secretKeyRef:
+                name: {{ default "kms-config" .Values.kms_secret_config | quote }}
+                key: KMS_ACCESS_KEY_ID
+          - name: KMS_ACCESS_KEY_SECRET
+            valueFrom: 
+              secretKeyRef:
+                name: {{ default "kms-config" .Values.kms_secret_config | quote }}
+                key: KMS_ACCESS_KEY_SECRET
+          - name: JAVA_OPTS
+            value: "{{- if eq .Values.debug true }}{{ $debugArgs }}{{- end }} -Denv=$APOLLO_ENV -Dapp.id=$APOLLO_APP_ID {{ .Values.env.ext_java_opts }} -Xms{{ .Values.resources.requests.memory }} -Xmx{{ .Values.resources.limits.memory }} -Dvpc=$KMS_REGION_ID -Dworker.hostname={{ default .Values.appName .Values.env.jobworker_hostname }} -Dwesd.project.name={{ .Values.appName }}"
+         {{- if .Values.env }}
+          {{- range $key, $val := .Values.env }}
+          - name: {{ $key }}
+            value: {{ $val | quote }}
+          {{- end }}
+         {{- end}}
+          ports:
+          - name: app-port 
+            containerPort: {{ .Values.service.internalPort }}
+          livenessProbe:
+          {{- if .Values.livenessProbeCmd }}
+            exec:
+              command: ["bash", "-c", "{{ .Values.livenessProbeCmd }}"]
+          {{- else }}
+            tcpSocket:
+              port: app-port
+          {{- end }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            {{- if .Values.readinessProbeCmd }}
+            exec:
+              command: ["/bin/bash", "-c", {{ .Values.readinessProbeCmd | quote }}]
+            {{- else }}
+            tcpSocket:
+              port: app-port
+            {{- end }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          {{- if .Values.volumes }}
+          volumeMounts:
+          {{- range .Values.volumes }}
+          - name: {{ .name }}
+            mountPath: {{ .mountPath }}
+          {{- end }}
+          {{- end }}
+      dnsPolicy: ClusterFirst
+      
+      # restartPolicy: OnFailure
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: {{ default 30 .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.volumes }}
+      volumes:
+      {{- range .Values.volumes }}
+      - name: {{ .name }}
+        persistentVolumeClaim:
+          claimName: {{ .name }}
+      {{- end }}
+      {{- end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+    {{- end }}
+

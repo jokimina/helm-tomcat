@@ -1,0 +1,72 @@
+# https://help.aliyun.com/document_detail/74878.html?spm=a2c4g.11186623.6.620.7r9YXR#h2-url-1
+apiVersion: log.alibabacloud.com/v1alpha1
+kind: AliyunLogConfig
+metadata:
+  # your config name, must be unique in you k8s cluster
+  name: {{ .Values.appName }}
+spec:
+  # logstore name to upload log
+  logstore: {{ .Values.appName }}
+  lifeCycle: {{ .Values.log.lifeCycle }}
+  # logtail config detail
+  logtailConfig:
+    {{ if eq .Values.log.type "stdout" }}
+    inputType: plugin
+    # docker stdout's input type is 'plugin'
+    configName: {{ .Values.appName }}
+    # logtail config name, should be same with [metadata.name]
+    inputDetail:
+      plugin:
+        inputs:
+          type: service_docker_stdout
+          # collect stdout and stderr
+          Stdout: true
+          Stderr: true
+          BeginLineRegex: "\\d+-\\d+-\\d+.*"
+          detail:
+            IncludeLabel:
+              io.kubernetes.container.name: {{ .Release.Name }}
+    {{ else if eq .Values.log.type "file" }}
+          # log file's input type is 'file'
+    inputType: file
+    # logtail config name, should be same with [metadata.name]
+    configName: {{ .Values.appName }}
+    inputDetail:
+        logBeginRegex: "\\d+-\\d+-\\d+.*"
+        # 极简模式日志，logType设置为"common_reg_log"
+        logType: common_reg_log
+        # 日志文件夹
+        logPath: {{ .Values.log.dir | quote }}
+        # 文件名, 支持通配符，例如log_*.log
+        filePattern: {{ .Values.log.filePattern | quote }}
+        # 采集容器内的文件，dockerFile flag设置为true
+        dockerFile: true
+        dockerIncludeLabel:
+          io.kubernetes.container.name: {{ .Release.Name }}
+    {{ end }}
+            # only collect container with "ALIYUN_LOGTAIL_USER_DEFINED_ID" in docker env config
+            # dockerIncludeEnv:
+            #     APOLLO_APP_ID: {{ .Values.appName }}
+            # collect all container's stdout except containers with "COLLECT_STDOUT_FLAG:false" in docker env config
+            # https://help.aliyun.com/document_detail/66658.html?spm=a2c4g.11186623.2.2.LStK0k
+            # ExcludeEnv:
+            #    COLLECT_LOG_FLAG: "false"
+    {{- if .Values.log.processors }}
+    processors:
+{{ toYaml .Values.log.processors | indent 6 }}
+    {{- end }}
+#    processors:
+#        -
+#        # 使用正则表达式处理
+#        type: processor_regex
+#        detail:
+#            # docker 采集的数据默认key为"content"
+#            SourceKey: content
+#            # 正则表达式提取
+#            Regex: 't=(\d+-\d+-\w+:\d+:\d+\+\d+) lvl=(\w+) msg="([^"]+)" logger=(\w+) userId=(\w+) orgId=(\w+) uname=(\S*) method=(\w+) path=(\S+) status=(\d+) remote_addr=(\S+) time_ms=(\d+) size=(\d+) referer=(\S*).*'
+#            # 提取出的key
+#            Keys: ['time', 'level', 'message', 'logger', 'userId', 'orgId', 'uname', 'method', 'path', 'status', 'remote_addr', 'time_ms', 'size', 'referer']
+#            # 保留原始字段
+#            KeepSource: true
+#            NoKeyError: true
+#            NoMatchError: true

@@ -1,0 +1,20 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: shared-dns
+spec:
+  rules:
+  - host: foo.[cluster-id].[region-id].alicontainer.com  ##替换为您集群默认的服务访问域名
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: http-svc1
+          servicePort: 80
+  - host: bar.[cluster-id].[region-id].alicontainer.com  ##替换为您集群默认的服务访问域名
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: http-svc2
+          servicePort: 80    
